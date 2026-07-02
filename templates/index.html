@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpsPilot AI — Decision Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" rel="stylesheet">
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<style>
+  /* Force the charts to sit side-by-side in equal columns */
+  .chart-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 24px !important;
+    margin-bottom: 32px !important; /* Space above tabs */
+  }
+
+  /* Strict absolute height prevents Chart.js from causing an infinite resize loop */
+  .chart-container {
+    position: relative;
+    height: 250px !important; 
+    width: 100%;
+  }
+
+  /* Keep it responsive: stack them if the screen gets too narrow */
+  @media (max-width: 900px) {
+    .chart-grid {
+      grid-template-columns: 1fr !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="mark"><i class="fa-solid fa-route"></i></div>
+      <div>
+        <h2>OpsPilot AI</h2>
+        <small>Enterprise Logistics Intelligence</small>
+      </div>
+    </div>
+    <hr>
+    <nav class="menu">
+      <a href="#dashboard" class="active"><i class="fa-solid fa-chart-line"></i> Dashboard</a>
+      <a href="#upload"><i class="fa-solid fa-upload"></i> Upload Dataset</a>
+      <a href="#chart-section"><i class="fa-solid fa-truck-fast"></i> Shipment Risk</a>
+      <a href="#tab-decision"><i class="fa-solid fa-gears"></i> Operational Decisions</a>
+      <a href="#tab-value"><i class="fa-solid fa-briefcase"></i> Business Value</a>
+      <a href="#tab-exec"><i class="fa-solid fa-user-tie"></i> Executive Decision Brief</a>
+      <a href="#tab-resolution"><i class="fa-solid fa-list-check"></i> Recommended Enterprise Workflow</a>
+    </nav>
+    <div class="sidebar-footer">
+      OpsPilot AI &middot; v1.0<br>
+      FutureAI Global Hackathon 2026
+    </div>
+  </aside>
+
+  <div class="main">
+
+    <div class="topbar">
+      <div>
+        <h1>Delivery Delay Risk — Decision Intelligence</h1>
+        <p class="subtitle">Enterprise logistics operations platform for delay prediction, prioritization and resolution planning</p>
+      </div>
+      {% if total %}
+      <div class="status-pill"><i class="fa-solid fa-circle"></i> AI Analysis Ready</div>
+      {% else %}
+      <div class="status-pill"><i class="fa-solid fa-circle"></i> Enterprise Decision Support</div>
+      {% endif %}
+    </div>
+
+    {% if total %}
+    <section id="dashboard" class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-icon"><i class="fa-solid fa-boxes-stacked"></i></div>
+        <div class="kpi-label">Total Shipments</div>
+        <h3>{{ total }}</h3>
+        <div class="kpi-sub">Evaluated this run</div>
+      </div>
+
+      <div class="kpi-card crit">
+        <div class="kpi-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+        <div class="kpi-label">Immediate Action Queue</div>
+        <h3>{{ critical }}</h3>
+        <div class="kpi-sub">Require immediate action</div>
+      </div>
+
+      <div class="kpi-card warn">
+        <div class="kpi-icon"><i class="fa-solid fa-sack-dollar"></i></div>
+        <div class="kpi-label">Revenue Exposure</div>
+        <h3>{{ revenue }}</h3>
+        <div class="kpi-sub">Exposed to delay impact</div>
+      </div>
+
+      <div class="kpi-card good">
+        <div class="kpi-icon"><i class="fa-solid fa-piggy-bank"></i></div>
+        <div class="kpi-label">Estimated Recoverable Value</div>
+        <h3>{{ potential_savings|default("—") }}</h3>
+        <div class="kpi-sub">If top risks are resolved</div>
+      </div>
+
+      <div class="kpi-card">
+        <div class="kpi-icon"><i class="fa-solid fa-gauge-high"></i></div>
+        <div class="kpi-label">Average Delay Risk</div>
+        <h3>{{ avg_risk|default("—") }}</h3>
+        <div class="kpi-sub">Across full shipment base</div>
+      </div>
+    </section>
+
+    <div id="chart-section" class="chart-grid">
+      <div class="card">
+        <div class="card-header">
+          <div class="icon-badge">
+            <i class="fa-solid fa-chart-pie"></i>
+          </div>
+          <h3>Operational Priority Distribution</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="riskChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div class="icon-badge">
+            <i class="fa-solid fa-chart-pie"></i>
+          </div>
+          <h3>Financial Impact Overview</h3>
+        </div>
+        <div class="chart-container">
+            <canvas id="financeChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="tab-exec">Executive Decision Brief</button>
+      <button class="tab-btn" data-tab="tab-decision">Operational Decisions</button>
+      <button class="tab-btn" data-tab="tab-value">Business Value</button>
+      <button class="tab-btn" data-tab="tab-resolution">Recommended Enterprise Workflow</button>
+    </nav>
+
+    <div class="tab-panels">
+
+      <section id="tab-exec" class="tab-panel active">
+        <div class="panel-grid">
+          <div class="card exec-summary executive-report">
+            <div class="card-header">
+              <div class="icon-badge"><i class="fa-solid fa-file-lines"></i></div>
+              <h3>Executive Decision Brief</h3>
+            </div>
+            {% for para in executive.split('\n') %}
+              {% if para.strip() %}
+                {% if para.startswith("Executive") or para.startswith("Key") or para.startswith("Operational") or para.startswith("Strategic") or para.startswith("Expected") %}
+                <h4>{{ para }}</h4>
+                {% else %}
+                <p>{{ para }}</p>
+                {% endif %}
+              {% endif %}
+            {% endfor %}
+          </div>
+
+          <div class="card ai-recommendation">
+            <div class="card-header">
+              <div class="icon-badge"><i class="fa-solid fa-wand-magic-sparkles"></i></div>
+              <h3>Executive Recommendation</h3>
+            </div>
+            <p>Focus intervention on the shipments flagged Immediate Action and High Priority below. Reassigning carriers and expediting the top-ranked accounts first recovers the largest share of at-risk revenue for the least operational effort.</p>
+            <span class="confidence-tag">Confidence: High</span>
+          </div>
+        </div>
+
+        <div class="card shipments-table">
+          <h3>Top 10 Highest Business Impact Shipments</h3>
+          <p class="table-note">The shipments are ranked using a Priority Score that combines predicted delay risk and business impact.</p>
+          <div class="table-wrap">
+            {{ table|safe }}
+          </div>
+        </div>
+      </section>
+
+      <section id="tab-decision" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <div class="icon-badge"><i class="fa-solid fa-diagram-project"></i></div>
+            <h3>Risk Tiering</h3>
+          </div>
+          <p style="font-size:13.5px;color:var(--ink-500);margin-bottom:14px;">
+            Every shipment is scored and assigned to one of four priority tiers below. Operations teams should work top-down.
+          </p>
+          <div class="legend-row">
+            <span class="risk-badge critical">Immediate Action</span>
+            <span class="risk-badge high">High Priority</span>
+            <span class="risk-badge medium">Monitor</span>
+            <span class="risk-badge low">Normal</span>
+          </div>
+          <p style="font-size:13.5px;color:var(--ink-700);line-height:1.7;">
+            The average delay risk across the current shipment base is <strong>{{ avg_risk|default("—") }}</strong>,
+            with <strong>{{ critical }}</strong> shipments in the Immediate Action tier. These are prioritized
+            first in the enterprise action plan, since they carry the highest combined probability and revenue impact.
+          </p>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="icon-badge"><i class="fa-solid fa-bolt"></i></div>
+            <h3>Action Metrics</h3>
+          </div>
+          <div class="value-grid">
+            <div class="value-tile">
+              <div class="value-num">{{ critical }}</div>
+              <div class="value-label">Immediate Action Queue</div>
+              <div class="value-desc">Act within the recommended window below.</div>
+            </div>
+            <div class="value-tile">
+              <div class="value-num">{{ high_risk|default("—") }}</div>
+              <div class="value-label">High Priority Queue</div>
+              <div class="value-desc">Next in line for intervention after Immediate Action tier.</div>
+            </div>
+            <div class="value-tile">
+              <div class="value-num">{{ intervention_window|default("24–48 hrs") }}</div>
+              <div class="value-label">Recommended Intervention Window</div>
+              <div class="value-desc">Time frame for the highest-return action.</div>
+            </div>
+            <div class="value-tile">
+              <div class="value-num">{{ potential_savings|default("—") }}</div>
+              <div class="value-label">Estimated Revenue Protected</div>
+              <div class="value-desc">If Immediate Action and High Priority tiers are resolved on time.</div>
+            </div>
+          </div>
+          <p style="font-size:12.5px;color:var(--ink-500);margin-top:4px;">
+            <strong style="color:var(--ink-700);">Primary risk drivers:</strong>
+            {{ risk_drivers|default("Carrier delay history, transit distance, warehouse dwell time") }}
+          </p>
+        </div>
+      </section>
+
+      <section id="tab-value" class="tab-panel">
+        <div class="value-grid">
+          <div class="value-tile">
+            <div class="value-num">{{ revenue }}</div>
+            <div class="value-label">Revenue Exposure</div>
+            <div class="value-desc">Total order value tied to shipments currently flagged for delay.</div>
+          </div>
+          <div class="value-tile">
+            <div class="value-num">{{ potential_savings }}</div>
+            <div class="value-label">Estimated Recoverable Value</div>
+            <div class="value-desc">Recoverable value if the top-ranked at-risk shipments are resolved on time.</div>
+          </div>
+          <div class="value-tile">
+            <div class="value-num">{{ critical }}</div>
+            <div class="value-label">Shipments Needing Action</div>
+            <div class="value-desc">Immediate Action-tier shipments where intervention has the highest expected payoff.</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="icon-badge"><i class="fa-solid fa-chart-pie"></i></div>
+            <h3>Operational Business Case</h3>
+          </div>
+          <p style="font-size:13.5px;color:var(--ink-700);line-height:1.75;">
+            Directing operations effort toward the {{ critical }} Immediate Action-tier shipments concentrates limited
+            review capacity on the orders where it has the greatest financial return, rather than spreading
+            effort evenly across all {{ total }} shipments in the book.
+          </p>
+        </div>
+      </section>
+
+      <section id="tab-resolution" class="tab-panel">
+        <div class="card">
+          <div class="card-header">
+            <div class="icon-badge"><i class="fa-solid fa-timeline"></i></div>
+            <h3>Recommended Enterprise Workflow</h3>
+          </div>
+          <div class="timeline">
+            {{ resolution|safe }}
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    {% else %}
+    <div id="upload" class="upload-card">
+      <div class="icon-circle"><i class="fa-solid fa-cloud-arrow-up"></i></div>
+      <h3>Upload Shipment Dataset</h3>
+      <p>Upload a shipment CSV file to generate enterprise-grade operational intelligence,
+        delivery risk prediction, business value assessment and executive AI recommendations.</p>
+      
+      <div id="form-container">
+        <form id="uploadForm" action="/predict" method="POST" enctype="multipart/form-data">
+          <input type="file" class="form-control" name="file" accept=".csv" required>
+          <br>
+          <button class="btn-primary" type="submit">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            Generate Enterprise AI Analysis
+          </button>
+        </form>
+      </div>
+
+      <div id="loading-screen" style="display: none; padding: 30px 0;">
+        <i class="fa-solid fa-circle-notch fa-spin fa-3x" style="color: #2563eb; margin-bottom: 20px;"></i>
+        <h3 style="color: #1e293b; margin-bottom: 8px;">Running Enterprise AI Pipeline...</h3>
+        <p style="color: #64748b; font-size: 14.5px;">Evaluating shipment risks and generating AI reports. This typically takes 15–30 seconds.</p>
+      </div>
+
+    </div>
+    {% endif %}
+
+    <footer class="page-footer">
+      OpsPilot AI &bull; Enterprise Logistics Decision Intelligence &bull; Built for FutureAI Global Hackathon 2026
+    </footer>
+
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="{{ url_for('static', filename='app.js') }}"></script>
+<script>
+// --- Show Loading Spinner on Submit ---
+const uploadForm = document.getElementById("uploadForm");
+if (uploadForm) {
+  uploadForm.addEventListener("submit", function() {
+    document.getElementById("form-container").style.display = "none";
+    document.getElementById("loading-screen").style.display = "block";
+  });
+}
+
+// --- Charts Logic ---
+const riskChart = document.getElementById("riskChart");
+if(riskChart){
+  new Chart(riskChart,{
+    type:"pie",
+    data:{
+      labels:[
+        "Immediate Action",
+        "High Priority",
+        "Monitor",
+        "Normal"
+      ],
+      datasets:[{
+        label:"Shipments",
+        data:[
+          {{critical_count}},
+          {{high_count}},
+          {{medium_count}},
+          {{low_count}}
+        ],
+        backgroundColor:[
+          "#d32f2f",
+          "#f57c00",
+          "#1976d2",
+          "#2e7d32"
+        ],
+        borderWidth:0
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio: false,
+      layout: {
+        padding: { top: 0, bottom: 0 }
+      },
+      plugins:{
+        legend:{
+          position:"bottom"
+        }
+      }
+    }
+  });
+}
+
+const financeChart=document.getElementById("financeChart");
+if(financeChart){
+  new Chart(financeChart,{
+    type:"bar",
+    data:{
+      labels:[
+        "Revenue Exposure",
+        "Estimated Recoverable Value"
+      ],
+      datasets:[{
+        data:[
+          {{revenue_numeric}},
+          {{potential_savings_numeric}}
+        ],
+        backgroundColor:[
+          "#2563eb",
+          "#16a34a"
+        ],
+        borderWidth:0,
+        maxBarThickness: 45 // Prevents the bars from taking up too much vertical height
+      }]
+    },
+    options:{
+      indexAxis: "y",
+      responsive:true,
+      maintainAspectRatio: false,
+      layout: {
+        padding: { top: 15, bottom: 0 } // Pushes the chart down slightly to align its visual center with the pie chart
+      },
+      plugins:{
+        legend:{
+          display: false
+        }
+      },
+      scales: {
+        x: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'USD (Millions)'
+          },
+          ticks: {
+            callback: function(value) {
+              return value / 1000000;
+            }
+          }
+        }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>
