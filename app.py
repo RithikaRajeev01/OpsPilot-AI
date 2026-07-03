@@ -202,6 +202,18 @@ def predict():
         (prediction_df["Sales"] / prediction_df["Sales"].max()) * 30
     ).round(1)
 
+    # ======================================================
+    # TOP 100 PRIORITY SHIPMENTS
+    # ======================================================
+
+    top100 = prediction_df.sort_values(
+
+        "Priority Score",
+
+        ascending=False
+
+    ).head(100)
+
     agent1 = results["agent1"]
 
     agent2 = results["agent2"]
@@ -218,10 +230,8 @@ def predict():
 
     total_shipments = len(prediction_df)
 
-    critical_shipments = min(
-        100,
-        len(prediction_df[prediction_df["Delay Risk (%)"] >= 80])
-    )
+    # Use Top 100 length for Immediate Action Queue
+    critical_shipments = len(top100)
 
     average_risk = round(
 
@@ -231,9 +241,13 @@ def predict():
 
     )
 
+    # ======================================================
+    # FINANCIAL EXPOSURE (TOP 100 ONLY)
+    # ======================================================
+
     revenue = round(
 
-        prediction_df["Sales"].sum(),
+        top100["Sales"].sum(),
 
         2
 
@@ -241,7 +255,7 @@ def predict():
 
     potential_savings = round(
 
-        revenue * 0.08,
+        revenue * 0.15,
 
         2
 
@@ -438,6 +452,25 @@ def predict():
     )
 
     # ------------------------------------------------------
+    # DYNAMIC DISPLAY FORMATTING (REVENUE & SAVINGS)
+    # ------------------------------------------------------
+
+    if revenue >= 1000000:
+        revenue_display = f"${revenue/1000000:.2f}M"
+    elif revenue >= 1000:
+        revenue_display = f"${revenue/1000:.1f}K"
+    else:
+        revenue_display = f"${revenue:,.0f}"
+
+    if potential_savings >= 1000000:
+        savings_display = f"${potential_savings/1000000:.2f}M"
+    elif potential_savings >= 1000:
+        savings_display = f"${potential_savings/1000:.1f}K"
+    else:
+        savings_display = f"${potential_savings:,.0f}"
+
+
+    # ------------------------------------------------------
     # RENDER DASHBOARD
     # ------------------------------------------------------
 
@@ -449,7 +482,7 @@ def predict():
 
         avg_risk=f"{average_risk}%",
 
-        revenue=f"${revenue/1000000:.2f}M",
+        revenue=revenue_display,
         
         revenue_numeric=revenue,
 
@@ -463,7 +496,7 @@ def predict():
 
         resolution=resolution,
 
-        potential_savings=f"{potential_savings/1000000:.2f}M",
+        potential_savings=savings_display,
         
         potential_savings_numeric=potential_savings,
 
